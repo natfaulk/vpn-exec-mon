@@ -2,3 +2,4 @@ vpn-exec-mon
 .env
 vpnstart.sh
 vpnend.sh
+log.txt

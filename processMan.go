@@ -24,7 +24,7 @@ func isRunning(name string) bool {
 			}
 		}
 
-		fmt.Println("An error ocurred")
+		fmt.Println("An error ocurred running pgrep")
 		log.Fatal(err)
 	}
 
@@ -33,7 +33,7 @@ func isRunning(name string) bool {
 	return true
 }
 
-func runWithOutput(name string, arg ...string) {
+	saveToLog(fmt.Sprintf("Program started (%s)", name))
 	cmd := exec.Command(name, arg...)
 
 	stdout, err := cmd.StdoutPipe()
@@ -125,7 +125,7 @@ func startVPN() {
 	runWithOutput("./scripts/vpnstart.sh")
 }
 
-func restartVPN() {
+	saveToLog("restarted vpn")
 	lg.Println("Stopping VPN...")
 	stopVPN()
 	time.Sleep(time.Second * 5)

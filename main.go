@@ -32,6 +32,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// open log
+	err = openLog()
+	if err != nil {
+		lg.Fatal("Couldn't open log:", err)
+	}
+	defer closeLog()
+
 	executable := os.Args[1]
 	executableName := filepath.Base(executable)
 	executableArgs := os.Args[2:]
