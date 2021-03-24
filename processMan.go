@@ -33,25 +33,27 @@ func isRunning(name string) bool {
 	return true
 }
 
+func runWithOutput(c chan string, name string, arg ...string) error {
 	saveToLog(fmt.Sprintf("Program started (%s)", name))
+
 	cmd := exec.Command(name, arg...)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("An error ocurred")
-		log.Fatal(err)
+		return err
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		fmt.Println("An error ocurred")
-		log.Fatal(err)
+		return err
 	}
 
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println("An error ocurred")
-		log.Fatal(err)
+		return err
 	}
 
 	merged := io.MultiReader(stderr, stdout)
@@ -59,14 +61,19 @@ func isRunning(name string) bool {
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		m := scanner.Text()
-		fmt.Println(m)
+		lg.Println(m)
+		if c != nil {
+			c <- m
+		}
 	}
 
 	err = cmd.Wait()
 	if err != nil {
 		fmt.Println("An error ocurred")
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 // canPing returns if pinging the target was successful
@@ -117,18 +124,22 @@ func checkVPN() bool {
 	return true
 }
 
-func stopVPN() {
-	runWithOutput("./scripts/vpnend.sh")
+func stopVPN() error {
+	return runWithOutput(nil, "./scripts/vpnend.sh")
 }
 
-func startVPN() {
-	runWithOutput("./scripts/vpnstart.sh")
+func startVPN() error {
+	return runWithOutput(nil, "./scripts/vpnstart.sh")
 }
 
+func restartVPN() error {
 	saveToLog("restarted vpn")
+
 	lg.Println("Stopping VPN...")
-	stopVPN()
+	if err := stopVPN(); err != nil {
+		return err
+	}
 	time.Sleep(time.Second * 5)
 	lg.Println("Starting VPN...")
-	startVPN()
+	return startVPN()
 }

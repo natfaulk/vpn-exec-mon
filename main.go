@@ -10,6 +10,8 @@ import (
 	"github.com/natfaulk/nflogger"
 )
 
+const killTime float64 = 30
+
 var lg *log.Logger = nflogger.Make("main")
 
 func main() {
@@ -48,18 +50,61 @@ func main() {
 		lg.Printf("Arg %d: %s", i, v)
 	}
 
+	c := make(chan string)
+	lastMessage := time.Now()
+
 	for {
 		if isRunning(executableName) {
 			lg.Println("IS ALREADY RUNNING")
 		} else {
 			// check the VPN
 			if checkVPN() {
-				lg.Println("STARTING ExECUTABLE")
+				lg.Println("STARTING EXECUTABLE")
+
+				// receive messages and save last received time
+				go func() {
+					for msg := range c {
+						// else complains about msg being unused
+						_ = msg
+						deltaT := time.Now().Sub(lastMessage).Seconds()
+						lastMessage = time.Now()
+						lg.Println(deltaT)
+					}
+				}()
+
+				// kill program if it is not responding
+				go func() {
+					for true {
+						if isRunning(executableName) {
+							deltaT := time.Now().Sub(lastMessage).Seconds()
+							if deltaT > killTime {
+								lg.Println("THIS RAN")
+								err := runWithOutput(nil, "pkill", executableName)
+								if err != nil {
+									lg.Println("Error running pkill")
+									lg.Println(err)
+								}
+							}
+						}
+
+						time.Sleep(time.Second * 60)
+					}
+				}()
+
+				// reset the last message count
+				lastMessage = time.Now()
 				// lets start the executable
-				runWithOutput(executable, executableArgs...)
+				err := runWithOutput(c, executable, executableArgs...)
+				if err != nil {
+					lg.Printf("Error running executable %s", executable)
+					lg.Println(err)
+				}
 			} else {
 				lg.Println("VPN NOT CONNECTED")
-				restartVPN()
+				if err := restartVPN(); err != nil {
+					lg.Println("Failed to restart VPN")
+					lg.Println(err)
+				}
 			}
 		}
 
